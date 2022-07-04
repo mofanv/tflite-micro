@@ -24,6 +24,9 @@ limitations under the License.
 #include "tensorflow/lite/micro/micro_profiler.h"
 #include "tensorflow/lite/schema/schema_generated.h"
 
+#include <time.h>
+#include <sys/time.h>
+
 namespace tflite {
 namespace {
 
@@ -36,6 +39,15 @@ const char* OpNameFromRegistration(const TfLiteRegistration* registration) {
 }
 
 }  // namespace
+
+double what_time_is_it_now()
+{
+    struct timeval time;
+    if (gettimeofday(&time,NULL)){
+        return 0;
+    }
+    return (double)time.tv_sec + (double)time.tv_usec * .000001;
+}
 
 MicroGraph::MicroGraph(TfLiteContext* context, const Model* model,
                        MicroAllocator* allocator,
@@ -152,7 +164,12 @@ TfLiteStatus MicroGraph::InvokeSubgraph(int subgraph_idx) {
     return kTfLiteError;
   }
   uint32_t operators_size = NumSubgraphOperators(model_, subgraph_idx);
+  MicroPrintf("--------------\n");
+
   for (size_t i = 0; i < operators_size; ++i) {
+    double time;
+    time=what_time_is_it_now();
+
     TfLiteNode* node =
         &(subgraph_allocations_[subgraph_idx].node_and_registrations[i].node);
     const TfLiteRegistration* registration = subgraph_allocations_[subgraph_idx]
@@ -184,6 +201,9 @@ TfLiteStatus MicroGraph::InvokeSubgraph(int subgraph_idx) {
     } else if (invoke_status != kTfLiteOk) {
       return invoke_status;
     }
+
+    // MicroPrintf("Execution time = %f\n", diff_t);
+    MicroPrintf("start: %f, end: %f, diff: %f \n", time, what_time_is_it_now(),what_time_is_it_now()-time);
   }
   current_subgraph_index_ = previous_subgraph_idx;
   return kTfLiteOk;
